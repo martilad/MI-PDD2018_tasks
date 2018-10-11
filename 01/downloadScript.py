@@ -40,17 +40,6 @@ class People():
             return None
         return None
         
-
-# Download data - It may take a several minutes. 
-#                 You can edit the number of pages downloaded. 
-#                 Work is being rolled down from the newest.
-
-
-# Download data - It may take a several minutes. 
-#                 You can edit the number of pages downloaded. 
-#                 Work is being rolled down from the newest.
-
-
 # Download data - It may take a several minutes. 
 #                 You can edit the number of pages downloaded. 
 #                 Work is being rolled down from the newest.
@@ -74,6 +63,14 @@ pref_lang = "eng"
 #Download degrees from usemap -> need chrome driver for render javascript to download.
 dPeople = True
 work_get = ["bachelor thesis", "master's thesis"]
+
+# Need
+newColumns = {'dc.contributor.advisor' : 'supervisor' , 'dc.contributor.author' : 'author', 
+                 'dc.identifier.uri' : 'uri', 'dc.date.issued' : 'issued',
+       'dc.language.iso' : 'language', 'dc.subject' : 'subject', 'dc.title' : 'title', 'dc.type' : 'type',
+       'dc.date.accepted' : 'acceptedDate', 'dc.contributor.referee' :'rewiever',
+       'theses.degree.discipline' : 'discipline', 'theses.degree.grantor' : 'department',
+       'theses.degree.programme' : 'programme'}
 
 if dPeople: people = People()
 # Group columns by language spec and keep one of want language or if not exist keep another one.
@@ -114,12 +111,16 @@ def parseDataFromHtmlTablePage(pageText):
     df = df.drop(0, axis = 0)
     df = df.drop(2, axis = 0)
    
-    if (df['dc.type'][1].lower() not in work_get):
+    if (str(df['dc.type'][1]).lower() not in work_get):
         return pd.DataFrame()
-    df = df.drop(['dc.date.accessioned', 'dc.date.available', 'dc.date.issued', 'dc.identifier', 
+    df = df.drop(['dc.date.accessioned', 'dc.date.available', 'dc.identifier', 
                   'dc.description.abstract', 'dc.publisher', 'dc.rights'  ], axis = 1)
-    df.columns = ['supervisor', 'author', 'uri', 'language', 'subject', 'title', 'type', 
-                  'acceptedDate', 'rewiever', 'discipline', 'department', 'programme']
+    
+    for i in df.columns:
+        if i not in newColumns:
+            df = df.drop(i, axis=0)
+    
+    df.rename(columns=newColumns, inplace=True)
     
     
     # Data which are not on dspace page
@@ -132,7 +133,9 @@ def parseDataFromHtmlTablePage(pageText):
     return df
 
 # Data frame with all data
-data_all = pd.DataFrame()
+data_all = pd.DataFrame(columns = ['supervisor', 'author', 'issued', 'uri', 'language', 'subject', 'title', 'type', 
+                  'acceptedDate', 'rewiever', 'discipline', 'department', 
+                                   'programme', 'faculty', 'supervisor_degree', 'rewiever_degree'])
 
 firstPage = requests.get(urlMain.format(urlDist), data)
 soup = BeautifulSoup(firstPage.text, "html.parser")
@@ -140,9 +143,11 @@ pages = int(soup.find("li", {"class": "last-page-link"}).find("a").get_text())
 print("Download first page. Pages with works:", pages, flush=True)
 
 sumTime = 0
+# from page
+fromPage = 1
 # go over all pages
-for pg in range(1, pages+1):
-    
+for pg in range(fromPage, pages+1):
+
     data['page'] = pg
     page = requests.get(urlMain.format(urlDist), data)
     soup = BeautifulSoup(page.text, "html.parser")
@@ -150,7 +155,6 @@ for pg in range(1, pages+1):
     # go over all items on page
     t1 = time.time()
     for i in soup.findAll("div", {"class": "row ds-artifact-item "}):
-        
         one = requests.get(urlMain.format(i.find("a").get("href")), {'show' : 'full'})
         if one.status_code != 200:
             print("Cant reach the work page. Continue..")
@@ -162,13 +166,14 @@ for pg in range(1, pages+1):
         if data_all.shape[0] == 0:
             data_all = df.copy()
         else:
-            data_all = pd.concat([data_all,df], ignore_index=True)
+            data_all = pd.concat([data_all,df], ignore_index=True, sort=False)
         
     if data_all.shape[0] == 0:
             continue
     # Get lower type and convert date in Data Frame
     data_all['type'] = data_all['type'].str.lower()
-    data_all['acceptedDate'] =  pd.to_datetime(data_all['acceptedDate'], format='%Y-%m-%d')
+    
+    #data_all['acceptedDate'] =  pd.to_datetime(data_all['acceptedDate'], format='%Y-%m-%d')
     
     #Count time and print download pages. 
     #After 100 download flush dataframe to csv. 
@@ -184,6 +189,8 @@ for pg in range(1, pages+1):
         
     data_all = data_all.iloc[0:0]
        
-    print("Remaining :", (sumTime/(pg+1))*(pages-pg), flush=True)
+    print("Remaining :", (sumTime/(pg+1-fromPage))*(pages-pg), flush=True)
     
 if dPeople: people.end()
+
+
