@@ -143,6 +143,7 @@ pages = int(soup.find("li", {"class": "last-page-link"}).find("a").get_text())
 print("Download first page. Pages with works:", pages, flush=True)
 
 sumTime = 0
+file = 'works.csv'
 # from page
 fromPage = 1
 # go over all pages
@@ -182,15 +183,16 @@ for pg in range(fromPage, pages+1):
     
     print("Page:", pg, "/", pages, flush=True)
     print(sumTime, pg, flush=True)
-    if os.path.isfile("works.csv"):
-        data_all.to_csv("works.csv", mode='a', sep=',', header=False)
+    if os.path.isfile(file):
+        data_all = data_all.reindex(sorted(data_all.columns), axis=1)
+        data_all.to_csv(file, mode='a', sep=',', header=False)
     else:
-        data_all.to_csv("works.csv", mode='a', sep=',', header=True)
+        data_all = data_all.reindex(sorted(data_all.columns), axis=1)
+        data_all.to_csv(file, mode='a', sep=',', header=True)
         
     data_all = data_all.iloc[0:0]
        
     print("Remaining :", (sumTime/(pg+1-fromPage))*(pages-pg), flush=True)
     
 if dPeople: people.end()
-
 
