@@ -1,0 +1,1 @@
+python3 downloadScript.py >> log.txt &
