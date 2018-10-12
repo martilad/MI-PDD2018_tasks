@@ -62,7 +62,7 @@ data = {
 pref_lang = "eng"
 #Download degrees from usemap -> need chrome driver for render javascript to download.
 dPeople = True
-work_get = ["bachelor thesis", "master's thesis"]
+work_get = {"bachelor thesis", "master's thesis", 'bakalářská práce', 'diplomová práce'}
 
 # Need
 newColumns = {'dc.contributor.advisor' : 'supervisor' , 'dc.contributor.author' : 'author', 
@@ -113,23 +113,28 @@ def parseDataFromHtmlTablePage(pageText):
    
     if (str(df['dc.type'][1]).lower() not in work_get):
         return pd.DataFrame()
-    df = df.drop(['dc.date.accessioned', 'dc.date.available', 'dc.identifier', 
-                  'dc.description.abstract', 'dc.publisher', 'dc.rights'  ], axis = 1)
     
+    for i in newColumns:
+        if i not in df.columns:
+            df[i]=None
     for i in df.columns:
         if i not in newColumns:
-            df = df.drop(i, axis=0)
+            df = df.drop(i, axis=1)
     
     df.rename(columns=newColumns, inplace=True)
-    
-    
+   
     # Data which are not on dspace page
     df["faculty"] = BeautifulSoup(pageText.text, "html.parser").find_all("ul", 
                         {"class": "breadcrumb hidden-xs"})[0].find_all("li")[1].get_text().strip()
-    
-    if dPeople: 
-        df["supervisor_degree"] = people.getDegree(df['supervisor'][1], df['faculty'][1])
-        df["rewiever_degree"] = people.getDegree(df['rewiever'][1], df['faculty'][1])
+    if dPeople:
+        try:
+            df["supervisor_degree"] = people.getDegree(df['supervisor'][1], df['faculty'][1]) 
+        except Exception:
+            df["supervisor_degree"] = None
+        try:
+            df["rewiever_degree"] = people.getDegree(df['rewiever'][1], df['faculty'][1])
+        except Exception:
+            df["rewiever_degree"] = None
     return df
 
 # Data frame with all data
