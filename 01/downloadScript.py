@@ -150,7 +150,7 @@ print("Download first page. Pages with works:", pages, flush=True)
 sumTime = 0
 file = 'works.csv'
 # from page
-fromPage = 1
+fromPage = 80
 # go over all pages
 for pg in range(fromPage, pages+1):
 
